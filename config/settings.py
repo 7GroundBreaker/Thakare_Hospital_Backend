@@ -97,10 +97,27 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 #
 # Defaults to SQLite for local development. Set DATABASE_ENGINE=postgres
-# (plus the POSTGRES_* variables) for a production-ready PostgreSQL setup.
+# (plus the POSTGRES_* variables) for a production-ready PostgreSQL setup,
+# or provide a single DATABASE_URL (as auto-injected by Vercel's Postgres
+# integration) — DATABASE_URL takes precedence when both are present.
 # ---------------------------------------------------------------------------
 
-if os.getenv("DATABASE_ENGINE") == "postgres":
+if os.getenv("DATABASE_URL"):
+    import urllib.parse
+
+    url = urllib.parse.urlparse(os.getenv("DATABASE_URL"))
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": url.path.lstrip("/"),
+            "USER": url.username,
+            "PASSWORD": url.password,
+            "HOST": url.hostname,
+            "PORT": url.port or 5432,
+            "CONN_MAX_AGE": 60,
+        }
+    }
+elif os.getenv("DATABASE_ENGINE") == "postgres":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
