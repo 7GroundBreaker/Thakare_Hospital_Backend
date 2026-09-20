@@ -186,9 +186,18 @@ if USE_S3:
     AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "ap-south-1")
     AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL") or None
     AWS_S3_CUSTOM_DOMAIN = os.getenv("AWS_S3_CUSTOM_DOMAIN") or None
+    # Non-AWS S3-compatible providers (Supabase Storage, DigitalOcean Spaces,
+    # MinIO, ...) generally don't support virtual-hosted-style bucket
+    # subdomains, so path-style addressing is needed whenever a custom
+    # endpoint is set.
+    AWS_S3_ADDRESSING_STYLE = os.getenv("AWS_S3_ADDRESSING_STYLE") or (
+        "path" if AWS_S3_ENDPOINT_URL else None
+    )
     AWS_DEFAULT_ACL = None
     AWS_S3_FILE_OVERWRITE = False
-    AWS_QUERYSTRING_AUTH = env_bool("AWS_QUERYSTRING_AUTH", default=True)
+    # Public media (doctor photos, gallery images, etc.) should have stable,
+    # cacheable URLs rather than expiring signed ones.
+    AWS_QUERYSTRING_AUTH = env_bool("AWS_QUERYSTRING_AUTH", default=False)
     STORAGES["default"] = {"BACKEND": "storages.backends.s3.S3Storage"}
     MEDIA_URL = os.getenv("MEDIA_URL", "/media/")
 else:
