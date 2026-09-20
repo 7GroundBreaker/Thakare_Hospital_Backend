@@ -1,0 +1,9 @@
+Dear {{ appointment.patient.full_name }},
+
+Your appointment request at Thakare Hospital (Reference ID:
+{{ appointment.reference_id }}) has been cancelled.
+
+If this was not expected, or you would like to book another appointment,
+please contact us.
+
+Thakare Hospital

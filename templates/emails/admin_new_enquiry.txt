@@ -1,0 +1,11 @@
+New website enquiry received.
+
+Name: {{ enquiry.name }}
+Phone: {{ enquiry.phone|default:"—" }}
+Email: {{ enquiry.email|default:"—" }}
+Subject: {{ enquiry.subject|default:"—" }}
+
+Message:
+{{ enquiry.message }}
+
+Review it in the admin dashboard.

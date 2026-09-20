@@ -1,0 +1,11 @@
+New appointment request received.
+
+Reference ID: {{ appointment.reference_id }}
+Patient: {{ appointment.patient.full_name }} ({{ appointment.patient.mobile_number }})
+Speciality: {{ appointment.speciality }}
+{% if appointment.doctor %}Doctor: {{ appointment.doctor }}
+{% endif %}Preferred date: {{ appointment.preferred_date }}
+Preferred time: {{ appointment.preferred_time }}
+Reason for visit: {{ appointment.reason_for_visit|default:"—" }}
+
+Review it in the admin dashboard.

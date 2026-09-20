@@ -1,0 +1,12 @@
+Dear {{ appointment.patient.full_name }},
+
+Your appointment at Thakare Hospital has been confirmed.
+
+Reference ID: {{ appointment.reference_id }}
+{% if appointment.doctor %}Doctor: {{ appointment.doctor }}
+{% endif %}Date: {{ appointment.preferred_date }}
+Time: {{ appointment.preferred_time }}
+
+If you need to reschedule or cancel, please contact us as soon as possible.
+
+Thakare Hospital

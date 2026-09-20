@@ -1,0 +1,15 @@
+Dear {{ appointment.patient.full_name }},
+
+Thank you for requesting an appointment at Thakare Hospital.
+
+Reference ID: {{ appointment.reference_id }}
+Speciality: {{ appointment.speciality }}
+{% if appointment.doctor %}Doctor: {{ appointment.doctor }}
+{% endif %}Preferred date: {{ appointment.preferred_date }}
+Preferred time: {{ appointment.preferred_time }}
+Status: {{ appointment.get_status_display }}
+
+Our team will contact you shortly to confirm your appointment. Please keep
+your reference ID handy for any follow-up queries.
+
+Thakare Hospital
