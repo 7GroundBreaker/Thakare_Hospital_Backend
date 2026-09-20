@@ -105,7 +105,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 if os.getenv("DATABASE_URL"):
     import urllib.parse
 
-    url = urllib.parse.urlparse(os.getenv("DATABASE_URL"))
+    db_url = os.getenv("DATABASE_URL")
+    url = urllib.parse.urlparse(db_url)
+    query = urllib.parse.parse_qs(url.query)
+    options = {}
+    if query.get("sslmode"):
+        options["sslmode"] = query["sslmode"][0]
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -115,6 +120,7 @@ if os.getenv("DATABASE_URL"):
             "HOST": url.hostname,
             "PORT": url.port or 5432,
             "CONN_MAX_AGE": 60,
+            "OPTIONS": options,
         }
     }
 elif os.getenv("DATABASE_ENGINE") == "postgres":
