@@ -11,15 +11,20 @@ from django.contrib import admin
 from django.urls import include, path
 
 from hospital.views import SiteSettingsView
+from queueing.admin import admin_index, token_panel
 
 api_v1_patterns = [
     path("", include("hospital.urls")),
     path("", include("appointments.urls")),
     path("", include("content.urls")),
+    path("", include("queueing.urls")),
     path("settings/", SiteSettingsView.as_view(), name="site-settings"),
 ]
 
 urlpatterns = [
+    # Doctors land on their token panel after admin login (see queueing.admin).
+    path("admin/", admin.site.admin_view(admin_index)),
+    path("admin/token-panel/", admin.site.admin_view(token_panel), name="token-panel"),
     path("admin/", admin.site.urls),
     path("api/v1/", include(api_v1_patterns)),
 ]

@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "hospital",
     "appointments",
     "content",
+    "queueing",
 ]
 
 MIDDLEWARE = [
@@ -244,6 +245,7 @@ REST_FRAMEWORK = {
         "user": "120/min",
         "appointment_submit": "10/hour",
         "contact_submit": "20/hour",
+        "queue_display": "120/min",
     },
     "DEFAULT_RENDERER_CLASSES": (
         "rest_framework.renderers.JSONRenderer",
@@ -326,3 +328,12 @@ LOGGING = {
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
+
+# ---------------------------------------------------------------------------
+# Token queue live push (Supabase Realtime Broadcast, see queueing/realtime.py)
+# Leave blank to disable; the waiting-room display then falls back to polling.
+# ---------------------------------------------------------------------------
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+QUEUE_REALTIME_CHANNEL = os.getenv("QUEUE_REALTIME_CHANNEL", "queue-display")

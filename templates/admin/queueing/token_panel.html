@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Token Panel | {{ site_title }}</title>
+<style>
+  :root {
+    --blue: #1d4ed8; --blue-dark: #1e3a8a; --blue-soft: #eff6ff; --border: #dbe3ef;
+    --text: #0f172a; --muted: #64748b; --waiting: #f1f5f9; --done: #bbf7d0; --done-text: #14532d;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); background: #fff; }
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; background: var(--blue-dark); color: #fff; }
+  header.top h1 { font-size: 1.05rem; margin: 0; }
+  header.top a, header.top button.link { color: #dbeafe; font-size: .85rem; text-decoration: none; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; }
+  .who { font-size: .85rem; color: #bfdbfe; }
+  main { max-width: 760px; margin: 0 auto; padding: 0 16px 32px; }
+  .current { position: sticky; top: 0; z-index: 2; background: #fff; padding: 14px 0 12px; border-bottom: 1px solid var(--border); }
+  .card { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--blue-soft); border: 1px solid #bfdbfe; border-radius: 16px; padding: 12px 16px; }
+  .label { font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--blue); }
+  .now { font-size: 3.25rem; font-weight: 800; line-height: 1; color: var(--blue); }
+  .next { font-size: .85rem; color: var(--muted); margin-top: 4px; }
+  .actions { display: flex; flex-direction: column; gap: 8px; }
+  .btn { min-height: 44px; padding: 0 18px; border-radius: 999px; font-weight: 700; font-size: .95rem; border: 2px solid var(--blue); cursor: pointer; }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-outline { background: #fff; color: var(--blue); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  select { width: 100%; min-height: 44px; margin-top: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 0 10px; font-size: 1rem; background: #fff; }
+  .msg { margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-size: .9rem; display: none; }
+  .msg.error { display: block; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  .hint { color: var(--muted); font-size: .85rem; margin: 14px 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  @media (min-width: 560px) { .grid { grid-template-columns: repeat(10, 1fr); } }
+  .tile { aspect-ratio: 1; min-height: 48px; border-radius: 12px; border: 1px solid var(--border); background: var(--waiting); color: var(--text); font-size: 1.1rem; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .tile.serving { background: var(--blue); border-color: var(--blue-dark); color: #fff; box-shadow: 0 4px 12px rgba(29,78,216,.35); }
+  .tile.completed { background: var(--done); border-color: #86efac; color: var(--done-text); }
+  .tile:active { transform: scale(.96); }
+  .tile:focus-visible, .btn:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 16px; font-size: .85rem; color: var(--muted); }
+  .legend span::before { content: ""; display: inline-block; width: 14px; height: 14px; border-radius: 4px; margin-right: 6px; vertical-align: -2px; border: 1px solid var(--border); }
+  .legend .l-wait::before { background: var(--waiting); }
+  .legend .l-serv::before { background: var(--blue); }
+  .legend .l-done::before { background: var(--done); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Token Panel</h1>
+    <div class="who">{{ own_doctor.full_name|default:user.get_username }}</div>
+  </div>
+  <div style="display:flex;gap:14px;align-items:center">
+    {% if not own_doctor %}<a href="{% url 'admin:index' %}">Admin</a>{% endif %}
+    <form method="post" action="{% url 'admin:logout' %}" style="margin:0">{% csrf_token %}<button class="link" type="submit">Log out</button></form>
+  </div>
+</header>
+
+<main>
+  <section class="current">
+    {% if not own_doctor %}
+    <select id="doctor" aria-label="Doctor">
+      <option value="">Select a doctor…</option>
+      {% for d in doctors %}<option value="{{ d.id }}">{{ d.full_name }}</option>{% endfor %}
+    </select>
+    {% endif %}
+    <div class="card" id="card" {% if not own_doctor %}hidden{% endif %}>
+      <div>
+        <div class="label">Now serving</div>
+        <div class="now" id="now" aria-live="polite">—</div>
+        <div class="next" id="next"></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="callNext" type="button">Call Next</button>
+        <button class="btn btn-outline" id="complete" type="button">Mark Complete</button>
+      </div>
+    </div>
+    <div class="msg" id="msg" role="alert"></div>
+  </section>
+
+  <div id="board" {% if not own_doctor %}hidden{% endif %}>
+    <p class="hint">Tap the token number of the patient you are seeing. It appears on the waiting-room screen instantly.</p>
+    <div class="grid" id="grid" role="group" aria-label="Token numbers"></div>
+    <div class="legend"><span class="l-wait">Waiting</span><span class="l-serv">Serving</span><span class="l-done">Completed</span></div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var MAX = 100, POLL_MS = 10000;
+  var CSRF = "{{ csrf_token }}";
+  var URLS = {
+    state: "{% url 'queue' %}",
+    next: "{% url 'queue-call-next' %}",
+    complete: "{% url 'queue-complete' %}",
+    call: "{% url 'queue-call' 0 %}".replace("/0/", "/{n}/")
+  };
+  var doctorId = "{{ own_doctor.id|default:'' }}";
+  var state = null, busy = false;
+  var $ = function (id) { return document.getElementById(id); };
+
+  // Build all 100 tiles once; later renders only toggle classes.
+  var tiles = [];
+  for (var n = 1; n <= MAX; n++) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "tile"; b.textContent = n; b.dataset.n = n;
+    b.setAttribute("aria-label", "Token " + n);
+    $("grid").appendChild(b); tiles.push(b);
+  }
+
+  function showError(text) {
+    var m = $("msg");
+    m.textContent = text || ""; m.className = text ? "msg error" : "msg";
+  }
+
+  function render() {
+    if (!state) return;
+    var byNum = {};
+    state.tokens.forEach(function (t) { byNum[t.number] = t.status; });
+    tiles.forEach(function (tile, i) {
+      var s = byNum[i + 1];
+      tile.className = "tile" + (s === "SERVING" ? " serving" : s === "COMPLETED" ? " completed" : "");
+      tile.setAttribute("aria-pressed", s === "SERVING" ? "true" : "false");
+    });
+    $("now").textContent = state.serving || "—";
+    $("next").textContent = state.upcoming.length ? "Next: " + state.upcoming.join(", ") : "All tokens called";
+    $("callNext").disabled = busy || !state.upcoming.length;
+    $("complete").disabled = busy || !state.serving;
+  }
+
+  function request(method, url) {
+    var sep = url.indexOf("?") === -1 ? "?" : "&";
+    return fetch(url + sep + "doctor=" + encodeURIComponent(doctorId), {
+      method: method,
+      credentials: "same-origin",
+      headers: { "X-CSRFToken": CSRF, "Accept": "application/json" }
+    }).then(function (r) {
+      if (r.status === 401 || r.status === 403) { location.reload(); throw new Error("Session expired."); }
+      return r.json().then(function (data) {
+        if (!r.ok) throw new Error(data.detail || "Request failed.");
+        return data;
+      });
+    });
+  }
+
+  function load() {
+    if (!doctorId || busy) return;
+    request("GET", URLS.state).then(function (d) { state = d; showError(""); render(); })
+      .catch(function (e) { showError(e.message || "Could not reach the server."); });
+  }
+
+  function act(url) {
+    if (busy || !doctorId) return;
+    busy = true; render();
+    request("POST", url)
+      .then(function (d) { state = d; showError(""); })
+      .catch(function (e) { showError(e.message || "Could not reach the server."); })
+      .then(function () { busy = false; render(); if (!state) load(); });
+  }
+
+  $("grid").addEventListener("click", function (e) {
+    var tile = e.target.closest(".tile");
+    if (!tile || !state) return;
+    var n = Number(tile.dataset.n);
+    if (n === state.serving) return;
+    if (tile.classList.contains("completed") && !confirm("Token " + n + " was already seen. Call it again?")) return;
+    act(URLS.call.replace("{n}", n));
+  });
+  $("callNext").addEventListener("click", function () { act(URLS.next); });
+  $("complete").addEventListener("click", function () { act(URLS.complete); });
+
+  var select = $("doctor");
+  if (select) select.addEventListener("change", function () {
+    doctorId = select.value; state = null;
+    $("card").hidden = $("board").hidden = !doctorId;
+    showError(""); load();
+  });
+
+  // Keeps the panel in sync if reception changes the queue from another device.
+  setInterval(function () { if (document.visibilityState === "visible") load(); }, POLL_MS);
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") load(); });
+  load();
+})();
+</script>
+</body>
+</html>
