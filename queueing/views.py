@@ -87,6 +87,13 @@ class CallNumberView(QueueAPIView):
         return self.state(doctor)
 
 
+class UnexaminedView(QueueAPIView):
+    def post(self, request, number):
+        doctor = self.doctor(request)
+        services.mark_unexamined(doctor.id, number)
+        return self.state(doctor)
+
+
 class CallNextView(QueueAPIView):
     def post(self, request):
         doctor = self.doctor(request)

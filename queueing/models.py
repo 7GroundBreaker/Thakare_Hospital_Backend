@@ -9,6 +9,7 @@ MAX_TOKENS_PER_DAY = 100
 class TokenStatus(models.TextChoices):
     SERVING = "SERVING", "Serving"
     COMPLETED = "COMPLETED", "Completed"
+    UNEXAMINED = "UNEXAMINED", "Unexamined"
 
 
 class QueueToken(models.Model):

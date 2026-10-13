@@ -36,13 +36,21 @@
   .tile { aspect-ratio: 1; min-height: 48px; border-radius: 12px; border: 1px solid var(--border); background: var(--waiting); color: var(--text); font-size: 1.1rem; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .tile.serving { background: var(--blue); border-color: var(--blue-dark); color: #fff; box-shadow: 0 4px 12px rgba(29,78,216,.35); }
   .tile.completed { background: var(--done); border-color: #86efac; color: var(--done-text); }
+  .tile.unexamined { background: #fecaca; border-color: #f87171; color: #7f1d1d; }
   .tile:active { transform: scale(.96); }
+  .sheet { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(15,23,42,.5); padding: 16px; }
+  .sheet-box { background: #fff; border-radius: 16px; padding: 20px; width: 100%; max-width: 340px; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+  .sheet-box h2 { margin: 0 0 14px; font-size: 1.1rem; }
+  .sheet-box .btn { width: 100%; margin-top: 8px; }
+  .btn-danger { background: #dc2626; border-color: #dc2626; color: #fff; }
+  .btn-cancel { border-color: var(--border); color: var(--muted); background: #fff; }
   .tile:focus-visible, .btn:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
   .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 16px; font-size: .85rem; color: var(--muted); }
   .legend span::before { content: ""; display: inline-block; width: 14px; height: 14px; border-radius: 4px; margin-right: 6px; vertical-align: -2px; border: 1px solid var(--border); }
   .legend .l-wait::before { background: var(--waiting); }
   .legend .l-serv::before { background: var(--blue); }
   .legend .l-done::before { background: var(--done); }
+  .legend .l-unex::before { background: #fecaca; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -83,9 +91,18 @@
   <div id="board" {% if not own_doctor %}hidden{% endif %}>
     <p class="hint">Tap the token number of the patient you are seeing. It appears on the waiting-room screen instantly.</p>
     <div class="grid" id="grid" role="group" aria-label="Token numbers"></div>
-    <div class="legend"><span class="l-wait">Waiting</span><span class="l-serv">Serving</span><span class="l-done">Completed</span></div>
+    <div class="legend"><span class="l-wait">Waiting</span><span class="l-serv">Serving</span><span class="l-done">Completed</span><span class="l-unex">Unexamined</span></div>
   </div>
 </main>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <h2 id="sheetTitle"></h2>
+    <button class="btn btn-primary" id="sheetCall" type="button">Call Again</button>
+    <button class="btn btn-danger" id="sheetUnex" type="button">Unexamined</button>
+    <button class="btn btn-cancel" id="sheetCancel" type="button">Cancel</button>
+  </div>
+</div>
 
 <script>
 (function () {
@@ -95,7 +112,8 @@
     state: "{% url 'queue' %}",
     next: "{% url 'queue-call-next' %}",
     complete: "{% url 'queue-complete' %}",
-    call: "{% url 'queue-call' 0 %}".replace("/0/", "/{n}/")
+    call: "{% url 'queue-call' 0 %}".replace("/0/", "/{n}/"),
+    unexamined: "{% url 'queue-unexamined' 0 %}".replace("/0/", "/{n}/")
   };
   var doctorId = "{{ own_doctor.id|default:'' }}";
   var state = null, busy = false;
@@ -121,7 +139,7 @@
     state.tokens.forEach(function (t) { byNum[t.number] = t.status; });
     tiles.forEach(function (tile, i) {
       var s = byNum[i + 1];
-      tile.className = "tile" + (s === "SERVING" ? " serving" : s === "COMPLETED" ? " completed" : "");
+      tile.className = "tile" + (s === "SERVING" ? " serving" : s === "COMPLETED" ? " completed" : s === "UNEXAMINED" ? " unexamined" : "");
       tile.setAttribute("aria-pressed", s === "SERVING" ? "true" : "false");
     });
     $("now").textContent = state.serving || "—";
@@ -164,10 +182,26 @@
     var tile = e.target.closest(".tile");
     if (!tile || !state) return;
     var n = Number(tile.dataset.n);
-    if (n === state.serving) return;
-    if (tile.classList.contains("completed") && !confirm("Token " + n + " was already seen. Call it again?")) return;
-    act(URLS.call.replace("{n}", n));
+    // Never-called tokens are called straight away; called ones offer a choice.
+    var called = tile.classList.contains("serving") || tile.classList.contains("completed") || tile.classList.contains("unexamined");
+    if (!called) return act(URLS.call.replace("{n}", n));
+    openSheet(n, n === state.serving);
   });
+
+  var sheetNum = null;
+  function openSheet(n, isServing) {
+    sheetNum = n;
+    $("sheetTitle").textContent = "Token " + n;
+    $("sheetCall").hidden = isServing;
+    $("sheet").hidden = false;
+    (isServing ? $("sheetUnex") : $("sheetCall")).focus();
+  }
+  function closeSheet() { $("sheet").hidden = true; sheetNum = null; }
+  $("sheetCall").addEventListener("click", function () { var n = sheetNum; closeSheet(); act(URLS.call.replace("{n}", n)); });
+  $("sheetUnex").addEventListener("click", function () { var n = sheetNum; closeSheet(); act(URLS.unexamined.replace("{n}", n)); });
+  $("sheetCancel").addEventListener("click", closeSheet);
+  $("sheet").addEventListener("click", function (e) { if (e.target === this) closeSheet(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeSheet(); });
   $("callNext").addEventListener("click", function () { act(URLS.next); });
   $("complete").addEventListener("click", function () { act(URLS.complete); });
 

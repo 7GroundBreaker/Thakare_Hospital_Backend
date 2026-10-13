@@ -52,6 +52,17 @@ class ServiceTests(QueueTestBase):
         self.assertEqual((first.pk, again.status), (again.pk, TokenStatus.SERVING))
         self.assertEqual(QueueToken.objects.count(), 1)
 
+    def test_unexamined_then_call_again(self):
+        services.call_number(self.doctor.id, 1)
+        services.call_number(self.doctor.id, 2)
+        services.mark_unexamined(self.doctor.id, 1)
+        services.mark_unexamined(self.doctor.id, 2)
+        self.assertEqual(statuses(self.doctor), {1: "UNEXAMINED", 2: "UNEXAMINED"})
+        services.call_number(self.doctor.id, 1)
+        self.assertEqual(statuses(self.doctor), {1: "SERVING", 2: "UNEXAMINED"})
+        with self.assertRaises(services.QueueError):
+            services.mark_unexamined(self.doctor.id, 50)
+
     def test_recalling_completed_number(self):
         services.call_number(self.doctor.id, 1)
         services.call_number(self.doctor.id, 2)

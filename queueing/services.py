@@ -113,6 +113,23 @@ def complete_current(doctor_id):
         return current
 
 
+def mark_unexamined(doctor_id, number):
+    """Flag a called token as not examined (patient absent / left). Works on
+    the token being served or one already completed."""
+    _validate_number(number)
+    with transaction.atomic():
+        _lock_doctor(doctor_id)
+        token = todays_tokens(doctor_id).filter(number=number).first()
+        if token is None:
+            raise QueueError(f"Token {number} has not been called yet.")
+        if token.status != TokenStatus.UNEXAMINED:
+            token.status = TokenStatus.UNEXAMINED
+            token.completed_at = timezone.now()
+            token.save(update_fields=["status", "completed_at"])
+            realtime.notify_display_changed()
+        return token
+
+
 def doctor_state(doctor):
     """Full state for the doctor's panel (staff only)."""
     tokens = list(todays_tokens(doctor.id).order_by("number"))
